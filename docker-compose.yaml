@@ -1,0 +1,16 @@
+version: '3'
+
+services:
+
+  db:
+    image: mongo:3.0
+    volumes: 
+     - /Users/AW/AWCP/shortlyCF/data:/data/db
+     
+  shortly-cf:
+    build:
+      context: .
+      dockerfile: app.Dockerfile
+    ports:
+     - '4000:4000' 
+     
