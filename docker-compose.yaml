@@ -3,14 +3,18 @@ version: '3'
 services:
 
   db:
-    image: mongo:3.0
+    image: postgres
     volumes: 
-     - /Users/AW/AWCP/shortlyCF/data:/data/db
-     
+     - /Users/adamwatt/myGoProjects/shortlyCF-GO/data:/data/db
+    ports:
+     - '5432:5432' 
   shortly-cf:
     build:
       context: .
       dockerfile: app.Dockerfile
     ports:
-     - '4000:4000' 
+     - '6060:6060' 
+    depends_on:
+      - "db"
+    command: ["./wait-for-it.sh", "db:5432", "--", "go", "run", "main.go"]
      
