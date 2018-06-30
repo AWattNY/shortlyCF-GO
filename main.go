@@ -5,17 +5,20 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/gorilla/mux"
-	"github.com/teris-io/shortid"
+	"github.com/teris-io/shortID"
 
 	"github.com/go-pg/pg"
 	"github.com/go-pg/pg/orm"
 )
 
+// URL ...
 type url struct {
-	LongURL  string `json:"longURL"`
-	ShortURL string `json:"shortURL"`
+	LongURL  string    `json:"longURL"`
+	ShortURL string    `json:"shortURL"`
+	Date     time.Time `json:"date"`
 }
 
 // JSONResponse with meta property
@@ -34,13 +37,24 @@ func ShortenURLEndPoint(w http.ResponseWriter, r *http.Request) {
 	r.ParseForm()
 	urlToBeShortened := r.Form["url"][0]
 	slug, _ := shortid.Generate()
-
-	newURL := url{
+	date := time.Now()
+	newURL := &url{
 		LongURL:  urlToBeShortened,
 		ShortURL: slug,
+		Date:     date,
 	}
 	fmt.Println(newURL)
-	response := JSONResponse{Data: 1234}
+	db := pg.Connect(&pg.Options{
+		Addr: "db:5432",
+		User: "postgres",
+	})
+	defer db.Close()
+
+	err := db.Insert(newURL)
+	if err != nil {
+		panic(err)
+	}
+	response := JSONResponse{Data: newURL}
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 	w.WriteHeader(http.StatusOK)
 	if err := json.NewEncoder(w).Encode(response); err != nil {
@@ -59,7 +73,17 @@ func StatsEndPoint(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	ExampleDB_Model()
+	fmt.Println("Welcome To Shortly !")
+	db := pg.Connect(&pg.Options{
+		Addr: "db:5432",
+		User: "postgres",
+	})
+	defer db.Close()
+
+	err := createSchema(db)
+	if err != nil {
+		panic(err)
+	}
 	r := mux.NewRouter()
 	r.HandleFunc("/", IndexEndPoint).Methods("GET")
 	r.HandleFunc("/api/shorten", ShortenURLEndPoint).Methods("POST")
@@ -70,98 +94,8 @@ func main() {
 	}
 }
 
-type User struct {
-	Id     int64
-	Name   string
-	Emails []string
-}
-
-func (u User) String() string {
-	return fmt.Sprintf("User<%d %s %v>", u.Id, u.Name, u.Emails)
-}
-
-type Story struct {
-	Id       int64
-	Title    string
-	AuthorId int64
-	Author   *User
-}
-
-func (s Story) String() string {
-	return fmt.Sprintf("Story<%d %s %s>", s.Id, s.Title, s.Author)
-}
-
-func ExampleDB_Model() {
-	db := pg.Connect(&pg.Options{
-		User: "postgres",
-	})
-	defer db.Close()
-
-	err := createSchema(db)
-	if err != nil {
-		panic(err)
-	}
-
-	user1 := &User{
-		Name:   "admin",
-		Emails: []string{"admin1@admin", "admin2@admin"},
-	}
-	err = db.Insert(user1)
-	if err != nil {
-		panic(err)
-	}
-
-	err = db.Insert(&User{
-		Name:   "root",
-		Emails: []string{"root1@root", "root2@root"},
-	})
-	if err != nil {
-		panic(err)
-	}
-
-	story1 := &Story{
-		Title:    "Cool story",
-		AuthorId: user1.Id,
-	}
-	err = db.Insert(story1)
-	if err != nil {
-		panic(err)
-	}
-
-	// Select user by primary key.
-	user := &User{Id: user1.Id}
-	err = db.Select(user)
-	if err != nil {
-		panic(err)
-	}
-
-	// Select all users.
-	var users []User
-	err = db.Model(&users).Select()
-	if err != nil {
-		panic(err)
-	}
-
-	// Select story and associated author in one query.
-	story := new(Story)
-	err = db.Model(story).
-		Relation("Author").
-		Where("story.id = ?", story1.Id).
-		Select()
-	if err != nil {
-		panic(err)
-	}
-
-	fmt.Println(user)
-	fmt.Println(users)
-	fmt.Println(story)
-	// Output: User<1 admin [admin1@admin admin2@admin]>
-	// [User<1 admin [admin1@admin admin2@admin]> User<2 root [root1@root root2@root]>]
-	// Story<1 Cool story User<1 admin [admin1@admin admin2@admin]>>
-}
-
 func createSchema(db *pg.DB) error {
-	for _, model := range []interface{}{(*User)(nil), (*Story)(nil)} {
+	for _, model := range []interface{}{(*url)(nil)} {
 		err := db.CreateTable(model, &orm.CreateTableOptions{})
 		if err != nil {
 
