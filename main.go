@@ -12,15 +12,9 @@ import (
 
 	"github.com/go-pg/pg"
 
+	"github.com/AWattNY/shortlyCF-GO/database"
 	"github.com/asaskevich/govalidator"
 )
-
-// URL ...
-type url struct {
-	LongURL  string    `json:"longURL"`
-	ShortURL string    `json:"shortURL"`
-	Date     time.Time `json:"date"`
-}
 
 // JSONResponse with meta property
 type JSONResponse struct {
@@ -51,7 +45,7 @@ func ShortenURLEndPoint(w http.ResponseWriter, r *http.Request) {
 	slug, _ := shortid.Generate()
 	date := time.Now()
 	fmt.Printf("longURL  = %v \n", urlToBeShortened)
-	newURL := url{
+	newURL := database.Url{
 		LongURL:  urlToBeShortened,
 		ShortURL: slug,
 		Date:     date,
@@ -98,8 +92,8 @@ func RedirectEndPoint(w http.ResponseWriter, r *http.Request) {
 }
 
 // GetlongURL Add Description here
-func getlongURL(db *pg.DB, slug string) (*url, error) {
-	var url url
+func getlongURL(db *pg.DB, slug string) (*database.Url, error) {
+	var url database.Url
 	err := db.Model(&url).
 		Where("url.short_url = ?", slug).
 		Select()
@@ -115,10 +109,10 @@ func StatsEndPoint(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	db := ConnectDB()
+	db := database.ConnectDB()
 	defer db.Close()
 
-	err := CreateSchema(db)
+	err := database.CreateSchema(db)
 	if err != nil {
 		panic(err)
 	}
