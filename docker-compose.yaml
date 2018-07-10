@@ -11,7 +11,7 @@ services:
   shortly-cf:
     build:
       context: .
-      dockerfile: app.Dockerfile
+      dockerfile: app.dockerfile
     ports:
      - '6060:6060' 
     depends_on:
