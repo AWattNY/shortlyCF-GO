@@ -11,7 +11,6 @@ import (
 	"github.com/teris-io/shortid"
 
 	"github.com/go-pg/pg"
-	"github.com/go-pg/pg/orm"
 
 	"github.com/asaskevich/govalidator"
 )
@@ -116,13 +115,10 @@ func StatsEndPoint(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	db := pg.Connect(&pg.Options{
-		Addr: "db:5432",
-		User: "postgres",
-	})
+	db := ConnectDB()
 	defer db.Close()
 
-	err := createSchema(db)
+	err := CreateSchema(db)
 	if err != nil {
 		panic(err)
 	}
@@ -134,15 +130,4 @@ func main() {
 	if err := http.ListenAndServe(":6060", r); err != nil {
 		log.Fatal(err)
 	}
-}
-
-func createSchema(db *pg.DB) error {
-	for _, model := range []interface{}{(*url)(nil)} {
-		err := db.CreateTable(model, &orm.CreateTableOptions{})
-		if err != nil {
-
-			return err
-		}
-	}
-	return nil
 }
