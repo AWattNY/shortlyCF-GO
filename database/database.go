@@ -1,13 +1,22 @@
-package main
+package database
 
 import (
+	"time"
+
 	"github.com/go-pg/pg"
 	"github.com/go-pg/pg/orm"
 )
 
+// Url ...
+type Url struct {
+	LongURL  string    `json:"longURL"`
+	ShortURL string    `json:"shortURL"`
+	Date     time.Time `json:"date"`
+}
+
 // CreateSchema add comment here
 func CreateSchema(db *pg.DB) error {
-	for _, model := range []interface{}{(*url)(nil)} {
+	for _, model := range []interface{}{(*Url)(nil)} {
 		err := db.CreateTable(model, &orm.CreateTableOptions{
 			IfNotExists: true,
 		})
