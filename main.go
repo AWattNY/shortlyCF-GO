@@ -8,10 +8,12 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
-	"github.com/teris-io/shortID"
+	"github.com/teris-io/shortid"
 
 	"github.com/go-pg/pg"
 	"github.com/go-pg/pg/orm"
+
+	"github.com/asaskevich/govalidator"
 )
 
 // URL ...
@@ -34,10 +36,22 @@ func IndexEndPoint(w http.ResponseWriter, r *http.Request) {
 
 // ShortenURLEndPoint Add description here.
 func ShortenURLEndPoint(w http.ResponseWriter, r *http.Request) {
-	params := mux.Vars(r)
-	urlToBeShortened := params["url"]
+	r.ParseForm()
+	body := r.Form
+	fmt.Printf("body  = %v \n", body)
+	urlToBeShortened := r.FormValue("url")
+	validURL := govalidator.IsURL(urlToBeShortened)
+	fmt.Printf("validURL  = %v \n", validURL)
+	if !validURL {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("Invalid URL, Must Submit a Valid URL\n"))
+		return
+	}
+
+	fmt.Printf("urlToBeShortened  = %v \n", urlToBeShortened)
 	slug, _ := shortid.Generate()
 	date := time.Now()
+	fmt.Printf("longURL  = %v \n", urlToBeShortened)
 	newURL := url{
 		LongURL:  urlToBeShortened,
 		ShortURL: slug,
@@ -73,13 +87,14 @@ func RedirectEndPoint(w http.ResponseWriter, r *http.Request) {
 	defer db.Close()
 	urlToBeLoaded, err := getlongURL(db, slug)
 	if err != nil {
-		w.WriteHeader(http.StatusNotFound)
+		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte("URL Not Found. Error: " + err.Error() + "\n"))
 		return
 	}
 	fmt.Printf("urlToBeLoaded = %#v \n", urlToBeLoaded)
 	LongURL := urlToBeLoaded.LongURL
 	fmt.Printf("LongURL  = %#v \n", LongURL)
+
 	http.Redirect(w, r, LongURL, 302)
 }
 
@@ -89,8 +104,9 @@ func getlongURL(db *pg.DB, slug string) (*url, error) {
 	err := db.Model(&url).
 		Where("url.short_url = ?", slug).
 		Select()
-	fmt.Printf("&url  = %#v \n", &url)
-	fmt.Printf("err  = %#v \n", err)
+	fmt.Printf("slug  = %v \n", slug)
+	fmt.Printf("&url  = %v \n", &url)
+	fmt.Printf("err  = %v \n", err)
 	return &url, err
 }
 
@@ -112,7 +128,7 @@ func main() {
 	}
 	r := mux.NewRouter()
 	r.HandleFunc("/", IndexEndPoint).Methods("GET")
-	r.HandleFunc("/api/shorten/{url}", ShortenURLEndPoint).Methods("POST")
+	r.HandleFunc("/api/shorten", ShortenURLEndPoint).Methods("POST")
 	r.HandleFunc("/{slug}", RedirectEndPoint).Methods("GET")
 	r.HandleFunc("/stats/:slug/:statsParam", StatsEndPoint).Methods("GET")
 	if err := http.ListenAndServe(":6060", r); err != nil {
