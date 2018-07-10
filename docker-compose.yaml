@@ -5,7 +5,7 @@ services:
   db:
     image: postgres
     volumes: 
-     - /Users/adamwatt/myGoProjects/shortlyCF-GO/data:/data/db
+     - /Users/adamwatt/go/src/github.com/AWattNY/shortlyCF-GO/data:/data/db
     ports:
      - '5432:5432' 
   shortly-cf:
